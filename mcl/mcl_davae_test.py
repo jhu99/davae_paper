@@ -11,6 +11,9 @@ base_path = "/Users/zhongyuanke/data/vipcca/mixed_cell_lines/"
 adata_b1 = tl.read_sc_data(base_path+"293t.h5ad", batch_name="293t")
 adata_b2 = tl.read_sc_data(base_path+"jurkat.h5ad", batch_name="jurkat")
 adata_b3 = tl.read_sc_data(base_path+"mixed.h5ad", batch_name="mixed")
+adata=adata_b1.concatenate(adata_b2)
+adata=adata.concatenate(adata_b3)
+adata.write_h5ad('/Users/zhongyuanke/data/pbmc/zheng/mcl.h5ad')
 
 adata_all = tl.davae_preprocessing([adata_b1, adata_b2, adata_b3], n_top_genes=3000)
 print(adata_all)

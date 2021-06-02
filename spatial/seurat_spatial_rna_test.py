@@ -1,3 +1,4 @@
+import scanpy as sc
 import scbean.tools.utils as tl
 import numpy as np
 from scbean.model import davae as davae
@@ -6,7 +7,6 @@ import anndata
 from sklearn.utils import shuffle
 from keras.utils import to_categorical
 import pandas as pd
-import scanpy as sc
 import matplotlib
 from numpy.random import seed
 seed(2021)
@@ -46,9 +46,14 @@ adata_spatial_posterior = adata_spatial_posterior[
     & (adata_spatial_posterior.obsm["spatial"][:, 0] < 6000),
     :,
 ]
-# adata_spatial_anterior.write_h5ad(base_path+'spatial/mouse_brain/10x_mouse_brain_Anterior/Anterior_cortex.h5ad')
-# adata_spatial_posterior.write_h5ad(base_path+'spatial/mouse_brain/10x_mouse_brain_Posterior/Posterior_cortex.h5ad')
-# print('finish write')
+adata_all = tl.spatial_rna_preprocessing(
+        adata_spatial_anterior,
+        adata_rna,
+    )
+
+
+
+
 def label_transfer(dist, labels):
     lab = pd.get_dummies(labels).to_numpy().T
     print(lab.shape)
@@ -63,32 +68,18 @@ def label_transfer(dist, labels):
     return class_prob
 
 
-def integrate_spatial_rna(adata_spatial, adata_rna, type='anterior'):
-    adata_all = tl.spatial_rna_preprocessing(
-        adata_spatial,
-        adata_rna,
-        n_top_genes=10000
-    )
-    adata_integrate = davae.fit_integration(
-        adata_all,
-        epochs=100,
-        batch_size=2,
-        domain_lambda=5,
-        sparse=True,
-        hidden_layers=[128, 64, 32],
-        split_by='batch',
-    )
-    sc.pp.neighbors(adata_integrate, use_rep='X_davae')
-    sc.tl.umap(adata_integrate)
-    sc.pl.umap(adata_integrate, color='batch')
+def integrate_spatial_rna(adata_spatial, adata_integrate, type='anterior'):
+    sc.pp.neighbors(adata_integrate, use_rep='X_pca')
+    # sc.tl.umap(adata_integrate)
+    # sc.pl.umap(adata_integrate,color='batch')
     len_spatial = adata_spatial.shape[0]
     len_rna = adata_rna.shape[0]
-    davae_emb = adata_integrate.obsm['X_davae']
-    adata_spatial.obsm["davae_embedding"] = davae_emb[0:len_spatial, :]
-    adata_rna.obsm['davae_embedding'] = davae_emb[len_spatial:len_rna + len_spatial, :]
+    seurat_embedding = adata_integrate.X
+    adata_spatial.obsm["seurat_embedding"] = seurat_embedding[0:len_spatial, :]
+    adata_rna.obsm['seurat_embedding'] = seurat_embedding[len_spatial:len_rna + len_spatial, :]
     distances = 1 - cosine_distances(
-        adata_rna.obsm["davae_embedding"],
-        adata_spatial.obsm['davae_embedding']
+        adata_rna.obsm["seurat_embedding"],
+        adata_spatial.obsm['seurat_embedding']
     )
     class_prob_anterior = label_transfer(distances, adata_rna.obs.cell_subclass)
     cp_spatial_df = pd.DataFrame(
@@ -103,8 +94,7 @@ def integrate_spatial_rna(adata_spatial, adata_rna, type='anterior'):
     sc.pl.spatial(
         adata_transfer,
         img_key="hires",
-        # color=["L2/3 IT", "L4", "L5 PT", "L6 CT"],
-        colot=['Hpca'],
+        color=["L2/3 IT", "L4", "L5 PT", "L6 CT"],
         size=1.5,
         color_map='Blues',
         ncols=2,
@@ -112,33 +102,26 @@ def integrate_spatial_rna(adata_spatial, adata_rna, type='anterior'):
     )
 
     adata_spatial.obs['celltype'] = label
-    # sc.pl.spatial(
-    #     adata_transfer,
-    #     img_key="hires",
-    #     color='celltype',
-    #     size=1.5,
-    #     color_map='Set2'
-    # )
+    sc.pl.spatial(
+        adata_spatial,
+        img_key="hires",
+        color='celltype',
+        size=1.5,
+        color_map='Set2'
+    )
     label = list(label)
     from collections import Counter
     print(Counter(label))
-    adata_spatial.write_h5ad('/Users/zhongyuanke/data/dann_vae/spatial/'+type+'_label_02.h5ad')
+    adata_spatial.write_h5ad('/Users/zhongyuanke/data/seurat_result/spatial/'+type+'_label_01.h5ad')
 
-
-# integrate_spatial_rna(adata_spatial_posterior, adata_rna, type='posterior')
-
-adata_spatial=sc.read_h5ad('/Users/zhongyuanke/data/dann_vae/spatial/anterior_label_01.h5ad')
-sc.tl.rank_genes_groups(adata_spatial, groupby='celltype', n_genes=adata_spatial.shape[1], method='wilcoxon')
-sc.pl.rank_genes_groups_heatmap(adata_spatial, groups=['L2/3 IT', 'L4', 'L5 IT', 'L6 CT',
-                                'Vip', 'Lamp5', 'Pvalb', 'Astro', 'Sst', 'Oligo'],
-                                n_genes=5)
-sc.pl.spatial(
-    adata_spatial,
-    img_key="hires",
-    # color=["L2/3 IT", "L4", "L5 PT", "L6 CT"],
-    color=['Nrgn'],
-    size=1.5,
-    color_map='Blues',
-    ncols=2,
-    legend_fontsize='xx-small'
-)
+adata=sc.read_h5ad('/Users/zhongyuanke/data/seurat_result/spatial/posterior_rna.h5ad')
+adata.obs['batch']=adata_all.obs['batch']
+print(adata)
+integrate_spatial_rna(adata_spatial_posterior, adata, type='posterior')
+# sc.pp.neighbors(adata)
+# sc.tl.umap(adata)
+# sc.pl.umap(adata, color='batch', alpha=0.5)
+#
+# sc.pp.neighbors(adata_all)
+# sc.tl.umap(adata_all)
+# sc.pl.umap(adata_all, color='batch', alpha=0.5)
