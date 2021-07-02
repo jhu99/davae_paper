@@ -70,9 +70,9 @@ len2 = adata2.shape[0]
 adata_all = tl.davae_preprocessing(adata_list, sparse=False)
 adata_out = davae.fit_integration(adata_all, split_by='batch', mode='DACVAE',
                                   domain_lambda=5.0,
-                                  epochs=40, hidden_layers=[128, 64, 32, 5],sparse=False)
+                                  epochs=3, hidden_layers=[128, 64, 32, 5],sparse=False)
 sc.pp.neighbors(adata_out, use_rep='X_davae')
 sc.tl.umap(adata_out)
-sc.pl.umap(adata_out, color='batch')
+sc.pl.umap(adata_out, color='celltype')
 print(adata_out)
 # adata.write_h5ad(base_path+out_path)

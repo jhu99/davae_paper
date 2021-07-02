@@ -46,11 +46,12 @@ t0 = time.time()
 #     print(f"Peak memory usage: {max_usage/1024/1024/1024} GB")
 desc.normalize_per_cell(adata, counts_per_cell_after=1e4)
 
-adata_out = desc.train(adata, dims=[adata.shape[1], 32, 16], tol=0.005, n_neighbors=10,
-               batch_size=256, louvain_resolution=[0.8],
-               save_dir="result", do_tsne=False, learning_rate=300,
+adata_out = desc.train(adata, dims=[adata.shape[1], 32, 16], tol=0.03, n_neighbors=10,
+               batch_size=256,
+               save_dir="result", do_tsne=False, learning_rate=100,
                do_umap=False,
-               save_encoder_weights=False)
+               save_encoder_weights=False,
+               use_earlyStop=True, use_GPU=True)
 t1 = time.time()
 # info = psutil.virtual_memory()
 # print('内存使用：', psutil.Process(os.getpid()).memory_info().rss/1024/1024/1024, 'GB')

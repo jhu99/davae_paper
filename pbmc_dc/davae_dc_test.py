@@ -28,9 +28,9 @@ adata_integrate = davae.fit_integration(adata_all, split_by='batch', epochs=1000
 adata_integrate.obs['label']=adata_orig.obs['label']
 sc.pp.neighbors(adata_integrate, use_rep='X_davae')
 sc.tl.umap(adata_integrate)
-sc.pl.umap(adata_integrate, color=['batch','label'], s=10, cmap='Dark2')
-print(adata_integrate)
-adata_integrate.write_h5ad(base_path+'dann_vae/benchmark1/dc_davae_temp.h5ad')
+sc.pl.umap(adata_integrate, color=['batch', 'label'], s=10, cmap='Dark2')
+# print(adata_integrate)
+# adata_integrate.write_h5ad(base_path+'dann_vae/benchmark1/dc_davae_temp.h5ad')
 
 
 

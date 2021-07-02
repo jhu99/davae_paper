@@ -8,7 +8,6 @@ parser.add_argument("--file_path", type=str, default='/Users/zhongyuanke/data/se
 
 import scbean.model.davae as davae
 import scbean.tools.utils as tl
-import scanpy as sc
 import matplotlib
 from numpy.random import seed
 seed(2021)
@@ -28,10 +27,14 @@ adata_all.obs_names_make_unique()
 
 adata_all = scgen.setup_anndata(adata_all, batch_key="batch_label", copy=True)
 model = scgen.SCGEN(adata_all)
-model.train(max_epochs=15,
+model.train(max_epochs=25,
     batch_size=32,
     early_stopping=True,
     early_stopping_patience=25,
     use_gpu=False)
 corrected_adata = model.batch_removal()
-corrected_adata.write('/Users/zhongyuanke/data/scgen/scgen_mcl01.h5ad')
+sc.pp.neighbors(corrected_adata,use_rep='corrected_latent')
+sc.tl.umap(corrected_adata)
+sc.pl.umap(corrected_adata,color='celltype')
+
+# corrected_adata.write('/Users/zhongyuanke/data/scgen/scgen_mcl01.h5ad')

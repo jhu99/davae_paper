@@ -17,8 +17,8 @@ adata = sc.read_h5ad(file_davae)
 adata.obs['celltype'] = label
 batch = ['0']*10412+['1']*10412
 adata.obs['batch']=batch
-sc.pl.umap(adata, color=['batch'],frameon=False, s=2)
-sc.pl.umap(adata, color=['celltype'],frameon=False, s=2)
+# sc.pl.umap(adata, color=['batch'],frameon=False, s=2)
+sc.pl.umap(adata, color=['celltype'],frameon=False,cmap='tab20b', s=2,legend_loc='on data')
 # sc.tl.leiden(adata)
 # sc.tl.rank_genes_groups(adata, 'leiden', method='t-test')
 # sc.pl.rank_genes_groups(adata, n_genes=5, sharey=False)
