@@ -5,8 +5,8 @@ data("panc8")
 pancreas.list <- SplitObject(panc8, split.by = "replicate")
 library(SeuratDisk)
 panc8<-UpdateSeuratObject(panc8)
-SaveH5Seurat(panc8, filename = "/Users/zhongyuanke/data/seurat_data/panc_8/panc8_8.h5Seurat")
-Convert("/Users/zhongyuanke/data/seurat_data/panc_8/panc8_8.h5Seurat", dest = "h5ad")
+SaveH5Seurat(panc8, filename = "/Users/zhongyuanke/data/seurat_data/panc_8/panc8_hvg.h5Seurat")
+Convert("/Users/zhongyuanke/data/seurat_data/panc_8/panc8_hvg.h5Seurat", dest = "h5ad")
 
 #-------------------------------------
 pancreas.list <- SplitObject(panc8, split.by = "tech")
@@ -15,7 +15,11 @@ for (i in 1:length(pancreas.list)) {
   pancreas.list[[i]] <- NormalizeData(pancreas.list[[i]], verbose = FALSE)
   pancreas.list[[i]] <- FindVariableFeatures(pancreas.list[[i]], selection.method = "vst", 
                                              nfeatures = 2000, verbose = FALSE)
+  pancreas.list[[i]] <- subset(pancreas.list[[i]], features =c(VariableFeatures(pancreas.list[[i]]) ))
+  
 }
+SaveH5Seurat(pancreas.list[[0]], filename = "/Users/zhongyuanke/data/seurat_data/panc_8/celseq2_hvg.h5Seurat")
+Convert("/Users/zhongyuanke/data/seurat_data/panc_8/celseq2_hvg.h5Seurat", dest = "h5ad")
 
 reference.list <- pancreas.list[c("celseq2", "celseq", 'fluidigmc1','indrop','smartseq2')] 
 pancreas.anchors <- FindIntegrationAnchors(object.list = reference.list, dims = 1:30)
@@ -160,14 +164,16 @@ library(cowplot)
 library(patchwork)
 library(SeuratDisk)
 # help(package='Seurat')
-file_atac <- '/Users/zhongyuanke/data/seurat_data/sc_atac/atac_v1_pbmc_10k_filtered_peak_bc_matrix_8000.csv'
+# file_atac <- '/Users/zhongyuanke/data/seurat_data/sc_atac/atac_v1_pbmc_10k_filtered_peak_bc_matrix_8000.csv'
 file_rna <- '/Users/zhongyuanke/data/seurat_data/sc_atac/pbmc_10k_v3_filtered_feature_bc_matrix.h5ad'
 Convert(file_rna,
         dest = "h5seurat", overwrite = TRUE)
-data1 <- LoadH5Seurat("/Users/zhongyuanke/data/seurat_data/sc_atac/pbmc_10k_v3_filtered_feature_bc_matrix.h5seurat")
-adata2 <-(pbmc@assays[["RNA"]]@data)
-data2 <- CreateSeuratObject(counts = adata2)
-reference.list <- c(data1, data2)
+rna <- LoadH5Seurat("/Users/zhongyuanke/data/seurat_data/sc_atac/pbmc_10k_v3_filtered_feature_bc_matrix.h5seurat")
+
+load('/Users/zhongyuanke/Desktop/r_para/pbmc_seurat.Rdata')
+atac <-(pbmc@assays[["RNA"]]@data)
+atac <- CreateSeuratObject(counts = atac)
+reference.list <- c(atac, rna)
 reference.list <- lapply(X = reference.list, FUN = function(x) {
   x <- NormalizeData(x)
   x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
@@ -176,14 +182,17 @@ reference.list <- lapply(X = reference.list, FUN = function(x) {
 pbmc_rna <- readRDS('/Users/zhongyuanke/data/seurat_data/sc_atac/pbmc_10k_v3.rds')
 DefaultAssay(pbmc) <- 'RNA'
 anchors <- FindIntegrationAnchors(
-  object.list = c(pbmc_rna, pbmc)
+   object.list = c(pbmc_rna, pbmc)
 )
 
 features <- SelectIntegrationFeatures(object.list = reference.list)
-anchors <- FindIntegrationAnchors(object.list = reference.list, anchor.features=features)
-
+anchors <- FindIntegrationAnchors(object.list = reference.list,dims = 1:30)
 integrated <- IntegrateData(anchorset = anchors, dims = 1:30)
 integrated <- AddMetaData(object = integrated, metadata = pbmc@active.ident, col.name = 'celltype')
+
+integrated <- ScaleData(integrated, verbose = FALSE)
+integrated <- RunPCA(integrated, npcs = 30, verbose = FALSE)
+
 SaveH5Seurat(integrated, filename = "/Users/zhongyuanke/data/seurat_result/atac.h5Seurat")
 Convert("/Users/zhongyuanke/data/seurat_result/atac.h5Seurat", dest = "h5ad")
 
@@ -192,6 +201,8 @@ integrated_matrix <- as.matrix(integrated_matrix)
 integrated_matrix <- t(integrated_matrix)
 data_path <- '/Users/zhongyuanke/data/seurat_result/atac.csv'
 write.csv(integrated_matrix, data_path)
+
+
 
 
 # -------------------------spatial-------------------------
@@ -243,12 +254,23 @@ library(SeuratDisk)
 rna<-LoadH5Seurat('/Users/zhongyuanke/data/multimodal/atac_pbmc_10k/rna.h5Seurat')
 atac<-LoadH5Seurat('/Users/zhongyuanke/data/multimodal/atac_pbmc_10k/activaty_matrix.h5Seurat')
 
-reference.list <- c(atac, rna)
+reference.list <- c(rna, atac)
 reference.list <- lapply(X = reference.list, FUN = function(x) {
   x <- NormalizeData(x)
   x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
   x <- subset(x, features =c(VariableFeatures(x) ))
 })
+
+rm(rna)
+anchors <- FindIntegrationAnchors(object.list = reference.list, dims = 1:30)
+integrated <- IntegrateData(anchorset = anchors, dims = 1:30)
+integrated <- ScaleData(integrated, verbose = FALSE)
+integrated <- RunPCA(integrated, npcs = 20, verbose = FALSE)
+
+SaveH5Seurat(integrated, filename = "/Users/zhongyuanke/data/seurat_result/seurat_multimodal.h5Seurat")
+Convert("/Users/zhongyuanke/data/seurat_result/seurat_multimodal.h5Seurat", dest = "h5ad")
+
+
 
 rna<-NormalizeData(rna)
 rna<-FindVariableFeatures(rna, selection.method = "vst", nfeatures = 2000)
@@ -262,8 +284,61 @@ atac<-subset(atac, features =c(VariableFeatures(atac)))
 SaveH5Seurat(atac, filename = "/Users/zhongyuanke/Desktop/temp_multimodal/atac.h5seurat")
 Convert("/Users/zhongyuanke/Desktop/temp_multimodal/atac.h5seurat", dest = "h5ad")
 
+rm(atac)
+gc()
+anchors <- FindIntegrationAnchors(object.list = reference.list, dims = 1:50)
+integrated <- IntegrateData(anchorset = anchors, dims = 1:50)
+
+integrated <- ScaleData(integrated, verbose = FALSE)
+integrated <- RunPCA(integrated, npcs = 30, verbose = FALSE)
+integrated <- RunUMAP(integrated, reduction = "pca", dims = 1:30)
+
+SaveH5Seurat(integrated, filename = "/Users/zhongyuanke/data/seurat_result/multimodal.h5Seurat")
+Convert("/Users/zhongyuanke/data/seurat_result/multimodal.h5Seurat", dest = "h5ad")
+
+# --------------------mouse brain-----------------------------
+library(Seurat)
+library(SeuratData)
+library(cowplot)
+library(patchwork)
+library(SeuratDisk)
+
+Convert("/Users/zhongyuanke/data/mouse_brain/mouse_brain_dropviz_filtered.h5ad", dest = "h5Seurat")
+Convert("/Users/zhongyuanke/data/mouse_brain/adata_nuclei_filtered.h5ad", dest = "h5Seurat")
+
+adata1<-LoadH5Seurat("/Users/zhongyuanke/data/mouse_brain/mouse_brain_dropviz_filtered.h5Seurat")
+adata2<-LoadH5Seurat("/Users/zhongyuanke/data/mouse_brain/adata_nuclei_filtered.h5Seurat")
 
 
+reference.list <- c(adata1, adata2)
+reference.list <- lapply(X = reference.list, FUN = function(x) {
+  x <- NormalizeData(x)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+  x <- subset(x, features =c(VariableFeatures(x) ))
+})
+
+rm(rna)
+anchors <- FindIntegrationAnchors(object.list = reference.list, dims = 1:30)
+integrated <- IntegrateData(anchorset = anchors, dims = 1:30)
+integrated <- ScaleData(integrated, verbose = FALSE)
+integrated <- RunPCA(integrated, npcs = 20, verbose = FALSE)
+
+SaveH5Seurat(integrated, filename = "/Users/zhongyuanke/data/seurat_result/seurat_multimodal.h5Seurat")
+Convert("/Users/zhongyuanke/data/seurat_result/seurat_multimodal.h5Seurat", dest = "h5ad")
+
+
+
+rna<-NormalizeData(rna)
+rna<-FindVariableFeatures(rna, selection.method = "vst", nfeatures = 2000)
+rna<-subset(rna, features =c(VariableFeatures(rna) ))
+SaveH5Seurat(rna, filename = "/Users/zhongyuanke/Desktop/temp_multimodal/rna.h5seurat")
+Convert("/Users/zhongyuanke/Desktop/temp_multimodal/rna.h5seurat", dest = "h5ad")
+
+atac<-NormalizeData(atac)
+atac<-FindVariableFeatures(atac, selection.method = "vst", nfeatures = 2000)
+atac<-subset(atac, features =c(VariableFeatures(atac)))
+SaveH5Seurat(atac, filename = "/Users/zhongyuanke/Desktop/temp_multimodal/atac.h5seurat")
+Convert("/Users/zhongyuanke/Desktop/temp_multimodal/atac.h5seurat", dest = "h5ad")
 
 rm(atac)
 gc()
